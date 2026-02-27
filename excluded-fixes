@@ -1,0 +1,20 @@
+Set Boot Loader Password in grub2
+Set the UEFI Boot Loader Password
+Remove the GDM Package Group
+Enable GNOME3 Login Warning Banner
+Set the GNOME3 Login Warning Banner Text
+Modify the System Login Banner
+Modify the System Login Banner for Remote Connections
+Direct root Logins Not Allowed
+Ensure Logs Sent To Remote Host
+Ensure firewall rules exist for all open ports
+Set Default firewalld Zone for Incoming Packets
+Disable SSH Root Login
+Disable X11 Forwarding
+Set SSH Daemon LogLevel to VERBOSE
+Use Only FIPS 140-2 Validated Ciphers
+Use Only FIPS 140-2 Validated MACs
+Use Only Strong Ciphers
+Use Only Strong Key Exchange algorithms
+Use Only Strong MACs
+Ensure /tmp Located On Separate Partition

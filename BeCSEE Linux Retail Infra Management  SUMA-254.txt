@@ -1,0 +1,93 @@
+.LOG
+11:49 AM 2/20/2026
+
+BeCSEE Linux Retail Infra Management / SUMA-254
+Hardening of POS image
+
+
+From https://github.com/ComplianceAsCode/content/tree/master there is the latest datastream for scap (Nov 28 2025) => https://github.com/ComplianceAsCode/content/releases/tag/v0.1.79 => https://github.com/ComplianceAsCode/content/releases/download/v0.1.79/scap-security-guide-0.1.79.tar.gz
+
+11:55 AM 2/20/2026
+
+Proposed salt state to distribute the ssg-sle15-ds.xml with the included CIS Level 1 profile to POS devices
+
+{% set version = "0.1.79" %}
+{% set archive = "scap-security-guide-{}.tar.gz".format(version) %}
+{% set url = "https://github.com/ComplianceAsCode/content/releases/download/v{}/{}".format(version, archive) %}
+{% set extract_dir = "/tmp/scap-security-guide-{}".format(version) %}
+
+download_ssg_archive:
+  file.managed:
+    - name: /tmp/{{ archive }}
+    - source: {{ url }}
+    - mode: '0644'
+    - skip_verify: True
+
+extract_ssg_archive:
+  cmd.run:
+    - name: "tar -xjf /tmp/{{ archive }} -C /tmp"
+    - creates: "{{ extract_dir }}"
+    - require:
+      - file: download_ssg_archive
+
+install_sle15_ds:
+  file.managed:
+    - name: /usr/share/xml/scap/ssg/content/ssg-sle15-ds.xml
+    - source: "file://{{ extract_dir }}/build/ssg-sle15-ds.xml"
+    - mode: '0644'
+    - user: root
+    - group: root
+    - makedirs: True
+    - require:
+      - cmd: extract_ssg_archive
+
+
+
+7:51 AM 2/24/2026
+
+Manual run to test on specific pos devices without salt
+
+# install the utility packages on specific POS
+
+zypper in openscap-utils openscap-content openscap libopenscap25 scap-security-guide
+
+# get the files with the L1 CIS profile
+
+zypper in wget
+wget https://github.com/ComplianceAsCode/content/releases/download/v0.1.79/scap-security-guide-0.1.79.tar.gz
+tar -vzxf scap-security-guide-0.1.79.tar.gz ( to extract only the needed file use tar -xzvf scap-security-guide-0.1.79.tar.gz scap-security-guide-0.1.79/ssg-sle15-ds.xml)
+
+cd scap-security-guide-0.1.79
+cp ssg-sle15-ds.xml /usr/share/xml/scap/ssg/content/ ( and overwrite if required)
+
+# check for the presence of the L1 profile
+oscap info /usr/share/xml/scap/ssg/content/ssg-sle15-ds.xml | egrep -i "Level 1"
+
+
+### How to scan the system for compliance ###
+
+# oval way (!!!not recommended, do not run the scan like this)
+
+oscap oval eval --results oscap-scan-results.xml /usr/share/xml/scap/ssg/content/ssg-sle15-ds.xml
+oscap oval generate report oscap-scan-results.xml >> ssg-scan-report.html
+
+# this is the recommended scan way the xccdf as there is a profile flag option that can be selected
+
+# xccdf way
+oscap xccdf eval --profile xccdf_org.ssgproject.content_profile_cis_workstation_l1 --results oscap-scan-results-xccdf.xml /usr/share/xml/scap/ssg/content/ssg-sle15-xccdf.xml
+# or use the datastream file with --fetch-remote-resources parameter (!!!recommended)
+oscap xccdf eval --profile xccdf_org.ssgproject.content_profile_cis_workstation_l1 --fetch-remote-resources --results oscap-scan-results-xccdf.xml /usr/share/xml/scap/ssg/content/ssg-sle15-ds.xml
+oscap xccdf generate report oscap-scan-results-xccdf.xml >> ssg-scan-report-xccdf.html
+
+Also check Confluence how to run the compliance scans from SUMA as that will be the way to run the scans.
+
+# generate the fix (for all issues against l1 profile)
+oscap xccdf generate fix \
+  --fix-type bash \
+  --profile xccdf_org.ssgproject.content_profile_cis_workstation_l1 \
+  --output full-fix.sh
+  oscap-scan-results-xccdf.xml \
+  
+There is a need for balancing what rules to be fixed or not, manual process only so far.
+
+
