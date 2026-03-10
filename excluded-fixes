@@ -7,8 +7,6 @@ Modify the System Login Banner
 Modify the System Login Banner for Remote Connections
 Direct root Logins Not Allowed
 Ensure Logs Sent To Remote Host
-Ensure firewall rules exist for all open ports
-Set Default firewalld Zone for Incoming Packets
 Disable SSH Root Login
 Disable X11 Forwarding
 Set SSH Daemon LogLevel to VERBOSE
@@ -18,3 +16,8 @@ Use Only Strong Ciphers
 Use Only Strong Key Exchange algorithms
 Use Only Strong MACs
 Ensure /tmp Located On Separate Partition
+
+===========================================
+proposed tasks for salt states:
+- aide database install and initialize
+- ensure logs sent to remote host (rsyslog)
