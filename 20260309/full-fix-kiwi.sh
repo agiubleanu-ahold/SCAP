@@ -581,6 +581,7 @@ if [ "$V_NETWORK_SERVICE" == "firewalld" ]; then
         ln -sf /usr/lib/systemd/system/firewalld.service /etc/systemd/system/multi-user.target.wants/firewalld.service
         echo "Firewalld enabled."
     fi
+fi
 
 
 # ==============================================================================
@@ -1175,5 +1176,3 @@ echo "Remediating rule 201/296: kernel.randomize_va_space"
     set_sshd_param "KexAlgorithms" "$KEX_LIST" "Strong Kex Algorithms"
 
     sed -i -e '$a\' "$SSHD_CONFIG"
-
-
