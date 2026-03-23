@@ -91,3 +91,17 @@ oscap xccdf generate fix \
 There is a need for balancing what rules to be fixed or not, manual process only so far.
 
 
+
+
+7:35 AM 3/19/2026
+# scan against l1 cis compliant profile from the host
+export OSCAP_PROBE_MEMORY_USAGE_RATIO=0.05
+cd /tmp
+oscap xccdf eval --profile xccdf_org.ssgproject.content_profile_cis_server_l1 --fetch-remote-resources --results oscap-scan-results-xccdf.xml /usr/share/xml/scap/ssg/content/ssg-sle15-ds.xml
+oscap xccdf generate report oscap-scan-results-xccdf.xml >> ssg-scan-report-xccdf.html
+
+oscap xccdf generate fix \
+  --fix-type bash \
+  --profile xccdf_org.ssgproject.content_profile_cis_server_l1 \
+  --output full-fix-server-l1.sh
+  oscap-scan-results-xccdf.xml \
