@@ -7,7 +7,7 @@ if [ -f /etc/sysconfig/prelink ]; then
 fi
 # END fix
 
-###############################################################################
+##############################+----#################################################
 # BEGIN fix (2, 3 / 305) for 'aide_build_database'
 ###############################################################################
 echo "Remediating: aide_build_database"
@@ -46,34 +46,6 @@ chown root:root /etc/systemd/system/aidecheck.*
 chmod 0644 /etc/systemd/system/aidecheck.*
 
 systemctl enable aidecheck.timer
-# END fix
-
-###############################################################################
-# BEGIN fix (7 / 305) for 'package_gdm_removed'
-###############################################################################
-echo "Remediating: package_gdm_removed"
-if rpm --quiet -q gdm; then
-    zypper -n remove gdm
-fi
-# END fix
-
-###############################################################################
-# BEGIN fix (8, 9 / 305) for 'dconf_settings'
-###############################################################################
-echo "Remediating: dconf_settings"
-if [ -d /etc/dconf/profile/ ]; then
-    mkdir -p /etc/dconf/profile
-    echo -e 'user-db:user\nsystem-db:gdm' > /etc/dconf/profile/gdm
-    dconf update || true
-fi
-# END fix
-
-###############################################################################
-# BEGIN fix (10 / 305) for 'package_sudo_installed'
-# NOTA: Adauga <package name="sudo"/> in config.xml
-###############################################################################
-echo "Remediating: package_sudo_installed"
-rpm --quiet -q sudo || echo "WARNING: sudo should be added to config.xml"
 # END fix
 
 ###############################################################################
@@ -144,7 +116,6 @@ EOF
 
 ###############################################################################
 # BEGIN fix (20-25 / 305) for 'ownership_issue_motd'
-# Setam proprietarul root:root (0:0) pentru toate fisierele de banner
 ###############################################################################
 echo "Remediating: ownership_issue_motd_banners"
 
@@ -172,27 +143,6 @@ fi
 
 
 bash
-###############################################################################
-# BEGIN fix (29, 30 / 305) for 'dconf_gnome_banner'
-###############################################################################
-echo "Remediating: dconf_gnome_banner_settings"
-
-DBDIR="/etc/dconf/db/gdm.d"
-LOCKDIR="/etc/dconf/db/gdm.d/locks"
-mkdir -p "${DBDIR}" "${LOCKDIR}"
-
-cat <<EOF > "${DBDIR}/00-security-settings"
-[org/gnome/login-screen]
-banner-message-enable=true
-banner-message-text='Authorized users only. All activity may be monitored and reported.'
-EOF
-
-cat <<EOF > "${LOCKDIR}/00-security-settings-lock"
-/org/gnome/login-screen/banner-message-enable
-/org/gnome/login-screen/banner-message-text
-EOF
-
-dconf update || true
 
 ###############################################################################
 # BEGIN fix (31 / 305) for 'pam_pwhistory_remember'
@@ -252,7 +202,7 @@ if [ -f "$PAM_LOGIN" ]; then
         fi
         sed -i -E "s/(deny=)[0-9]*/\1$VAR_TALLY_DENY/" "$PAM_LOGIN"
     else
-        sed -i "1iauth     required    pam_tally2.so deny=$VAR_TALLY_DENY onerr=fail even_deny_root" "$PAM_LOGIN"
+        sed -i "auth     required    pam_tally2.so deny=$VAR_TALLY_DENY onerr=fail even_deny_root" "$PAM_LOGIN"
     fi
 fi
 
@@ -642,7 +592,6 @@ done
 
 ###############################################################################
 # BEGIN fix (90, 91 / 305) - Rsyslog Service
-# NOTA: Adaugă <package name="rsyslog"/> în config.xml
 ###############################################################################
 echo "Remediating: service_rsyslog_enabled"
 
@@ -1376,23 +1325,15 @@ EOF
 # ===============================================================================
 # BEGIN fix (212 / 305) for 'xccdf_org.ssgproject.content_rule_file_groupowner_cron_d'
 # BEGIN fix (213 / 305) for 'xccdf_org.ssgproject.content_rule_file_groupowner_cron_daily'
-# ===============================================================================
-# DESC: Sets group ownership of cron directories to root (0).
-
-[ -d /etc/cron.d ] && chgrp --no-dereference 0 /etc/cron.d
-[ -d /etc/cron.daily ] && chgrp --no-dereference 0 /etc/cron.daily
-
-# END fix for 'xccdf_org.ssgproject.content_rule_file_groupowner_cron_daily'
-
-# ===============================================================================
 # BEGIN fix (214 / 305) for 'xccdf_org.ssgproject.content_rule_file_groupowner_cron_hourly'
 # BEGIN fix (215 / 305) for 'xccdf_org.ssgproject.content_rule_file_groupowner_cron_monthly'
 # BEGIN fix (216 / 305) for 'xccdf_org.ssgproject.content_rule_file_groupowner_cron_weekly'
 # BEGIN fix (217 / 305) for 'xccdf_org.ssgproject.content_rule_file_groupowner_crontab'
 # ===============================================================================
-# DESC: Sets group ownership of remaining cron directories and crontab to root (0).
-# NOTE: Directly applying chgrp as group 0 is guaranteed to exist in a Linux build.
+# DESC: Sets group ownership of cron directories to root (0).
 
+[ -d /etc/cron.d ] && chgrp --no-dereference 0 /etc/cron.d
+[ -d /etc/cron.daily ] && chgrp --no-dereference 0 /etc/cron.daily
 [ -d /etc/cron.hourly ]  && chgrp --no-dereference 0 /etc/cron.hourly
 [ -d /etc/cron.monthly ] && chgrp --no-dereference 0 /etc/cron.monthly
 [ -d /etc/cron.weekly ]  && chgrp --no-dereference 0 /etc/cron.weekly
@@ -1509,140 +1450,6 @@ if [ -f /etc/cron.allow ]; then
     chmod u-xs,g-xws,o-xwrt /etc/cron.allow
 fi
 
-# ===============================================================================
-# BEGIN fix (238 / 305) for 'xccdf_org.ssgproject.content_rule_package_dhcp_client_removed'
-# ===============================================================================
-# DESC: Ensures dhcp-client package is removed.
-rpm -q dhcp-client &>/dev/null && zypper -n remove dhcp-client
-
-# ===============================================================================
-# BEGIN fix (239 / 305) for 'xccdf_org.ssgproject.content_rule_package_dhcp_removed'
-# ===============================================================================
-# DESC: Ensures dhcp-server package is removed.
-rpm -q dhcp-server &>/dev/null && zypper -n remove dhcp-server
-
-# ===============================================================================
-# BEGIN fix (240 / 305) for 'xccdf_org.ssgproject.content_rule_service_dhcpd_disabled'
-# ===============================================================================
-# DESC: Disables and masks dhcpd service and socket.
-systemctl disable dhcpd.service --now 2>/dev/null || true
-systemctl mask dhcpd.service
-systemctl mask dhcpd.socket 2>/dev/null || true
-
-# ===============================================================================
-# BEGIN fix (241 / 305) for 'xccdf_org.ssgproject.content_rule_package_bind_removed'
-# ===============================================================================
-# DESC: Ensures bind (DNS server) package is removed.
-rpm -q bind &>/dev/null && zypper -n remove bind
-
-# ===============================================================================
-# BEGIN fix (242 / 305) for 'xccdf_org.ssgproject.content_rule_service_named_disabled'
-# ===============================================================================
-# DESC: Disables and masks named (DNS) service and socket.
-systemctl disable named.service --now 2>/dev/null || true
-systemctl mask named.service
-systemctl mask named.socket 2>/dev/null || true
-
-# ===============================================================================
-# BEGIN fix (243 / 305) for 'xccdf_org.ssgproject.content_rule_package_vsftpd_removed'
-# ===============================================================================
-# DESC: Ensures vsftpd (FTP server) package is removed.
-rpm -q vsftpd &>/dev/null && zypper -n remove vsftpd
-
-# ===============================================================================
-# BEGIN fix (244 / 305) for 'xccdf_org.ssgproject.content_rule_service_vsftpd_disabled'
-# ===============================================================================
-# DESC: Disables and masks vsftpd service and socket.
-systemctl disable vsftpd.service --now 2>/dev/null || true
-systemctl mask vsftpd.service
-systemctl mask vsftpd.socket 2>/dev/null || true
-
-# ===============================================================================
-# BEGIN fix (245 / 305) for 'xccdf_org.ssgproject.content_rule_package_httpd_removed'
-# ===============================================================================
-# DESC: Ensures httpd (Apache) package is removed from the image.
-rpm -q httpd &>/dev/null && zypper -n remove httpd
-
-# ===============================================================================
-# BEGIN fix (246 / 305) for 'xccdf_org.ssgproject.content_rule_service_httpd_disabled'
-# ===============================================================================
-# DESC: Disables and masks httpd service and socket.
-systemctl disable httpd.service 2>/dev/null || true
-systemctl mask httpd.service
-systemctl mask httpd.socket 2>/dev/null || true
-
-# ===============================================================================
-# BEGIN fix (247 / 305) for 'xccdf_org.ssgproject.content_rule_package_dovecot_removed'
-# ===============================================================================
-# DESC: Ensures dovecot (IMAP/POP3) package is removed from the image.
-rpm -q dovecot &>/dev/null && zypper -n remove dovecot
-
-# ===============================================================================
-# BEGIN fix (248 / 305) for 'xccdf_org.ssgproject.content_rule_service_dovecot_disabled'
-# ===============================================================================
-# DESC: Disables and masks dovecot service and socket.
-systemctl disable dovecot.service 2>/dev/null || true
-systemctl mask dovecot.service
-systemctl mask dovecot.socket 2>/dev/null || true
-
-# ===============================================================================
-# BEGIN fix (249 / 305) for 'xccdf_org.ssgproject.content_rule_package_openldap-clients_removed'
-# ===============================================================================
-# DESC: Ensures openldap2-client package is removed from the image.
-rpm -q openldap2-client &>/dev/null && zypper -n remove openldap2-client
-
-# ===============================================================================
-# BEGIN fix (250 / 305) for 'xccdf_org.ssgproject.content_rule_package_openldap-servers_removed'
-# ===============================================================================
-# DESC: Ensures openldap2 (server) package is removed from the image.
-rpm -q openldap2 &>/dev/null && zypper -n remove openldap2
-
-# ===============================================================================
-# BEGIN fix (251 / 305) for 'xccdf_org.ssgproject.content_rule_postfix_network_listening_disabled'
-# ===============================================================================
-# DESC: Configures Postfix to listen only on the loopback interface.
-if [ -f "/etc/postfix/main.cf" ]; then
-    # Remove existing inet_interfaces lines and append the hardened setting
-    sed -i "/^\s*inet_interfaces\s*=/d" "/etc/postfix/main.cf"
-    echo "inet_interfaces = loopback-only" >> "/etc/postfix/main.cf"
-    # No 'systemctl restart' here; KIWI will boot with the new config.
-elif [ -d "/etc/postfix" ]; then
-    echo "inet_interfaces = loopback-only" > "/etc/postfix/main.cf"
-fi
-
-# ===============================================================================
-# BEGIN fix (252 / 305) for 'xccdf_org.ssgproject.content_rule_package_nfs-utils_removed'
-# ===============================================================================
-# DESC: Ensures nfs-utils package is removed.
-rpm -q nfs-utils &>/dev/null && zypper -n remove nfs-utils
-
-# ===============================================================================
-# BEGIN fix (253 / 305) for 'xccdf_org.ssgproject.content_rule_package_rpcbind_removed'
-# ===============================================================================
-# DESC: Ensures rpcbind package is removed.
-rpm -q rpcbind &>/dev/null && zypper -n remove rpcbind
-
-# ===============================================================================
-# BEGIN fix (254 / 305) for 'xccdf_org.ssgproject.content_rule_service_rpcbind_disabled'
-# ===============================================================================
-# DESC: Disables and masks rpcbind service and socket.
-systemctl disable rpcbind.service 2>/dev/null || true
-systemctl mask rpcbind.service 2>/dev/null || true
-systemctl mask rpcbind.socket 2>/dev/null || true
-
-# ===============================================================================
-# BEGIN fix (255 / 305) for 'xccdf_org.ssgproject.content_rule_service_nfs_disabled'
-# ===============================================================================
-# DESC: Disables and masks NFS server service and socket.
-systemctl disable nfs-server.service 2>/dev/null || true
-systemctl mask nfs-server.service 2>/dev/null || true
-systemctl mask nfs-server.socket 2>/dev/null || true
-
-# ===============================================================================
-# BEGIN fix (256 / 305) for 'xccdf_org.ssgproject.content_rule_package_chrony_installed'
-# ===============================================================================
-# DESC: Ensures chrony is installed for time synchronization.
-rpm -q chrony &>/dev/null || zypper -n install chrony
 
 # ===============================================================================
 # BEGIN fix (257 / 305) for 'xccdf_org.ssgproject.content_rule_chronyd_configure_pool_and_server'
@@ -1673,132 +1480,6 @@ cat <<EOF > /usr/lib/systemd/timesyncd.conf.d/oscap-remedy.conf
 [Time]
 RootDistanceMax=1
 EOF
-
-# ===============================================================================
-# BEGIN fix (260 / 305) for 'xccdf_org.ssgproject.content_rule_package_rsync_removed'
-# ===============================================================================
-# DESC: Ensures rsync package is removed.
-rpm -q rsync &>/dev/null && zypper -n remove rsync
-
-# ===============================================================================
-# BEGIN fix (261 / 305) for 'xccdf_org.ssgproject.content_rule_service_rsyncd_disabled'
-# ===============================================================================
-# DESC: Disables and masks rsyncd service and socket.
-systemctl disable rsyncd.service 2>/dev/null || true
-systemctl mask rsyncd.service 2>/dev/null || true
-systemctl mask rsyncd.socket 2>/dev/null || true
-
-# ===============================================================================
-# BEGIN fix (262 / 305) for 'xccdf_org.ssgproject.content_rule_package_tcp_wrappers_removed'
-# ===============================================================================
-# DESC: Ensures tcpd (TCP Wrappers) package is removed from the image.
-rpm -q tcpd &>/dev/null && zypper -n remove tcpd
-
-# ===============================================================================
-# BEGIN fix (263 / 305) for 'xccdf_org.ssgproject.content_rule_package_xinetd_removed'
-# ===============================================================================
-# DESC: Ensures xinetd package is removed from the image.
-rpm -q xinetd &>/dev/null && zypper -n remove xinetd
-
-# ===============================================================================
-# BEGIN fix (264 / 305) for 'xccdf_org.ssgproject.content_rule_service_xinetd_disabled'
-# ===============================================================================
-# DESC: Disables and masks xinetd service and socket.
-systemctl disable xinetd.service 2>/dev/null || true
-systemctl mask xinetd.service 2>/dev/null || true
-systemctl mask xinetd.socket 2>/dev/null || true
-
-# ===============================================================================
-# BEGIN fix (265 / 305) for 'xccdf_org.ssgproject.content_rule_package_ypbind_removed'
-# ===============================================================================
-# DESC: Ensures ypbind (NIS client) package is removed.
-rpm -q ypbind &>/dev/null && zypper -n remove ypbind
-
-# ===============================================================================
-# BEGIN fix (266 / 305) for 'xccdf_org.ssgproject.content_rule_package_ypserv_removed'
-# ===============================================================================
-# DESC: Ensures ypserv (NIS server) package is removed.
-rpm -q ypserv &>/dev/null && zypper -n remove ypserv
-
-# ===============================================================================
-# BEGIN fix (267 / 305) for 'xccdf_org.ssgproject.content_rule_package_rsh_removed'
-# ===============================================================================
-# DESC: Ensures rsh (Remote Shell) package is removed.
-rpm -q rsh &>/dev/null && zypper -n remove rsh
-
-# ===============================================================================
-# BEGIN fix (268 / 305) for 'xccdf_org.ssgproject.content_rule_package_talk_removed'
-# ===============================================================================
-# DESC: Ensures talk package is removed.
-rpm -q talk &>/dev/null && zypper -n remove talk
-
-# ===============================================================================
-# BEGIN fix (269 / 305) for 'xccdf_org.ssgproject.content_rule_package_telnet-server_removed'
-# ===============================================================================
-# DESC: Ensures telnet-server package is removed.
-rpm -q telnet-server &>/dev/null && zypper -n remove telnet-server
-
-# ===============================================================================
-# BEGIN fix (270 / 305) for 'xccdf_org.ssgproject.content_rule_package_telnet_removed'
-# ===============================================================================
-# DESC: Ensures telnet (client) package is removed.
-rpm -q telnet &>/dev/null && zypper -n remove telnet
-
-# ===============================================================================
-# BEGIN fix (271 / 305) for 'xccdf_org.ssgproject.content_rule_package_cups_removed'
-# ===============================================================================
-# DESC: Ensures CUPS (Printing Service) package is removed.
-rpm -q cups &>/dev/null && zypper -n remove cups
-
-# ===============================================================================
-# BEGIN fix (272 / 305) for 'xccdf_org.ssgproject.content_rule_service_cups_disabled'
-# ===============================================================================
-# DESC: Disables and masks CUPS service and socket.
-systemctl disable cups.service 2>/dev/null || true
-systemctl mask cups.service 2>/dev/null || true
-systemctl mask cups.socket 2>/dev/null || true
-
-# ===============================================================================
-# BEGIN fix (273 / 305) for 'xccdf_org.ssgproject.content_rule_package_squid_removed'
-# ===============================================================================
-# DESC: Ensures Squid (Proxy Server) package is removed.
-rpm -q squid &>/dev/null && zypper -n remove squid
-
-# ===============================================================================
-# BEGIN fix (274 / 305) for 'xccdf_org.ssgproject.content_rule_service_squid_disabled'
-# ===============================================================================
-# DESC: Disables and masks Squid service and socket.
-systemctl disable squid.service 2>/dev/null || true
-systemctl mask squid.service 2>/dev/null || true
-systemctl mask squid.socket 2>/dev/null || true
-
-# ===============================================================================
-# BEGIN fix (275 / 305) for 'xccdf_org.ssgproject.content_rule_package_samba_removed'
-# ===============================================================================
-# DESC: Ensures Samba (File Sharing) package is removed.
-rpm -q samba &>/dev/null && zypper -n remove samba
-
-# ===============================================================================
-# BEGIN fix (276 / 305) for 'xccdf_org.ssgproject.content_rule_service_smb_disabled'
-# ===============================================================================
-# DESC: Disables and masks Samba (SMB) service and socket.
-systemctl disable smb.service 2>/dev/null || true
-systemctl mask smb.service 2>/dev/null || true
-systemctl mask smb.socket 2>/dev/null || true
-
-# ===============================================================================
-# BEGIN fix (277 / 305) for 'xccdf_org.ssgproject.content_rule_package_net-snmp_removed'
-# ===============================================================================
-# DESC: Ensures Net-SNMP package is removed.
-rpm -q net-snmp &>/dev/null && zypper -n remove net-snmp
-
-# ===============================================================================
-# BEGIN fix (278 / 305) for 'xccdf_org.ssgproject.content_rule_service_snmpd_disabled'
-# ===============================================================================
-# DESC: Disables and masks SNMP daemon service and socket.
-systemctl disable snmpd.service 2>/dev/null || true
-systemctl mask snmpd.service 2>/dev/null || true
-systemctl mask snmpd.socket 2>/dev/null || true
 
 # ===============================================================================
 # BEGIN fix (279 / 305) for 'xccdf_org.ssgproject.content_rule_file_groupowner_sshd_config'
@@ -2021,17 +1702,3 @@ if [ -f /etc/ssh/sshd_config ]; then
     sed -i "/^\s*MACs/Id" /etc/ssh/sshd_config
     echo "MACs $STRONG_MACS" >> /etc/ssh/sshd_config
 fi
-
-# ===============================================================================
-# BEGIN fix (304 / 305) for 'xccdf_org.ssgproject.content_rule_package_xorg-x11-server-common_removed'
-# ===============================================================================
-# DESC: Ensures X11 common server files are removed to reduce attack surface.
-rpm -q xorg-x11-server-common &>/dev/null && zypper -n remove xorg-x11-server-common
-
-# ===============================================================================
-# BEGIN fix (305 / 305) for 'xccdf_org.ssgproject.content_rule_xwindows_remove_packages'
-# ===============================================================================
-# DESC: Removes all X-Windows related server packages from the image.
-for pkg in xorg-x11-server xorg-x11-server-extra xorg-x11-server-Xvfb xwayland; do
-    rpm -q "$pkg" &>/dev/null && zypper -n remove "$pkg"
-done
