@@ -234,7 +234,6 @@ fi
 
 ###############################################################################
 # BEGIN fix (35 / 305) for 'pam_cracklib_dcredit'
-# NOTA: Asigura-te ca pachetul 'pam-config' sau 'cracklib' este in config.xml
 ###############################################################################
 echo "Remediating: cracklib_accounts_password_pam_dcredit"
 
@@ -455,7 +454,7 @@ fi
 gpasswd -M '' "$VAR_WHEEL_GROUP"
 
 ###############################################################################
-# BEGIN fix (68 / 305) - Limitare direct root login (TTY)
+# BEGIN fix (68 / 305) - Limit direct root login (TTY)
 ###############################################################################
 echo "Remediating: no_direct_root_logins"
 : > /etc/securetty
@@ -1076,7 +1075,7 @@ echo "Remediating: critical_files_permissions_octal"
 [ -f /etc/gshadow- ] && chmod 0000 /etc/gshadow-
 
 ###############################################################################
-# BEGIN fix (184 / 305) - Dezactivare Autofs
+# BEGIN fix (184 / 305) - Disabling Autofs
 ###############################################################################
 echo "Remediating: service_autofs_disabled"
 if [ -f /usr/lib/systemd/system/autofs.service ] || [ -f /etc/systemd/system/autofs.service ]; then
@@ -1085,7 +1084,7 @@ if [ -f /usr/lib/systemd/system/autofs.service ] || [ -f /etc/systemd/system/aut
 fi
 
 ###############################################################################
-# BEGIN fix (185, 186 / 305) - Dezactivare Module Kernel (UDF, USB-Storage)
+# BEGIN fix (185, 186 / 305) - Disabling Kernel Module (UDF, USB-Storage)
 ###############################################################################
 echo "Remediating: kernel_modules_disabled (udf, usb-storage)"
 
@@ -1095,147 +1094,6 @@ for mod in udf usb-storage; do
     echo "blacklist ${mod}" >> "$CONF"
     chmod 0644 "$CONF"
 done
-
-###############################################################################
-# BEGIN fix (187, 188 / 305) - Securing /dev/shm (nodev, noexec, nosuid)
-###############################################################################
-echo "Remediating: mount_options_dev_shm"
-
-FSTAB="/etc/fstab"
-MOUNT_LINE="tmpfs   /dev/shm    tmpfs   defaults,nodev,nosuid,noexec    0 0"
-
-if [ -f "$FSTAB" ]; then
-    if grep -q "[[:space:]]/dev/shm[[:space:]]" "$FSTAB"; then
-        sed -i "s|.*[[:space:]]/dev/shm[[:space:]].*|$MOUNT_LINE|" "$FSTAB"
-    else
-        echo "$MOUNT_LINE" >> "$FSTAB"
-    fi
-fi
-
-###############################################################################
-# BEGIN fix (189 / 305) - Securing /dev/shm (nosuid)
-###############################################################################
-echo "Remediating: mount_option_dev_shm_nosuid"
-if grep -q "[[:space:]]/dev/shm[[:space:]]" /etc/fstab; then
-    if ! grep "[[:space:]]/dev/shm[[:space:]]" /etc/fstab | grep -q "nosuid"; then
-        sed -i "s|\([[:space:]]/dev/shm[[:space:]][^[:space:]]*[[:space:]][^[:space:]]*\),|\1,nosuid,|" /etc/fstab
-    fi
-fi
-
-###############################################################################
-# BEGIN fix (190 / 305) - Securing /home (nodev)
-###############################################################################
-echo "Remediating: mount_option_home_nodev"
-
-FSTAB="/etc/fstab"
-if [ -f "$FSTAB" ]; then
-    if grep -q "[[:space:]]/home[[:space:]]" "$FSTAB"; then
-        if ! grep "[[:space:]]/home[[:space:]]" "$FSTAB" | grep -q "nodev"; then
-            sed -i "s|\([[:space:]]/home[[:space:]][^[:space:]]*[[:space:]]\)\([^[:space:]]*\)|\1\2,nodev|" "$FSTAB"
-        fi
-    else
-        echo "INFO: /home not on a separate partition in fstab, skipping nodev requirement."
-    fi
-fi
-
-###############################################################################
-# BEGIN fix (191, 192, 193 / 305) - Securing removable media
-###############################################################################
-echo "Remediating: mount_options_removable_partitions"
-VAR_REMOVABLE='/dev/cdrom'
-FSTAB="/etc/fstab"
-
-if [ -f "$FSTAB" ] && grep -qE "^\s*$VAR_REMOVABLE" "$FSTAB"; then
-    for opt in nodev noexec nosuid; do
-        if ! grep "^\s*$VAR_REMOVABLE" "$FSTAB" | grep -q "$opt"; then
-            sed -i "s|\(^\s*$VAR_REMOVABLE\s\+\S\+\s\+\S\+\s\+\)\(\S\+\)|\1\2,$opt|" "$FSTAB"
-        fi
-    done
-fi
-
-# ===============================================================================
-# BEGIN fix (195 / 305) for 'xccdf_org.ssgproject.content_rule_mount_option_tmp_noexec'
-# ===============================================================================
-# DESC: Adds 'noexec' to /tmp in /etc/fstab. No live remounts for KIWI chroot.
-
-MNT_TMP_REGEXP="^[[:space:]]*[^#][^[:space:]]*[[:space:]]\+/tmp[[:space:]]"
-
-if grep -q "$MNT_TMP_REGEXP" /etc/fstab; then
-    if ! grep "$MNT_TMP_REGEXP" /etc/fstab | grep -q "noexec"; then
-        sed -i "/$MNT_TMP_REGEXP/ s/\([[:space:]][^[:space:]]\+\)\([[:space:]]\+[0-9]\+[0-9]\+\)$/,\noexec\2/" /etc/fstab
-        sed -i 's/,,/,/g' /etc/fstab
-    fi
-else
-    echo "tmpfs /tmp tmpfs defaults,noexec,nosuid,nodev 0 0" >> /etc/fstab
-fi
-
-# END fix for 'xccdf_org.ssgproject.content_rule_mount_option_tmp_noexec'
-
-
-# ===============================================================================
-# BEGIN fix (196 / 305) for 'xccdf_org.ssgproject.content_rule_mount_option_tmp_nosuid'
-# ===============================================================================
-# DESC: Adds 'nosuid' to /tmp in /etc/fstab. No live remounts for KIWI chroot.
-
-if grep -q "$MNT_TMP_REGEXP" /etc/fstab; then
-    if ! grep "$MNT_TMP_REGEXP" /etc/fstab | grep -q "nosuid"; then
-        sed -i "/$MNT_TMP_REGEXP/ s/\([[:space:]][^[:space:]]\+\)\([[:space:]]\+[0-9]\+[0-9]\+\)$/,\nosuid\2/" /etc/fstab
-        sed -i 's/,,/,/g' /etc/fstab
-    fi
-fi
-# END fix for 'xccdf_org.ssgproject.content_rule_mount_option_tmp_nosuid'
-
-# ===============================================================================
-# BEGIN fix (197 / 305) for 'xccdf_org.ssgproject.content_rule_mount_option_var_tmp_nodev'
-# ===============================================================================
-# DESC: Adds 'nodev' to /var/tmp in /etc/fstab.
-
-MNT_VARTMP_REGEXP="^[[:space:]]*[^#][^[:space:]]*[[:space:]]\+/var/tmp[[:space:]]"
-
-if grep -q "$MNT_VARTMP_REGEXP" /etc/fstab; then
-    if ! grep "$MNT_VARTMP_REGEXP" /etc/fstab | grep -q "nodev"; then
-        sed -i "/$MNT_VARTMP_REGEXP/ s/\([[:space:]][^[:space:]]\+\)\([[:space:]]\+[0-9]\+[0-9]\+\)$/,\nodev\2/" /etc/fstab
-        sed -i 's/,,/,/g' /etc/fstab
-    fi
-else
-    echo "Warning: /var/tmp is not in fstab. Skipping nodev remediation to avoid build failure." >&2
-fi
-
-# END fix for 'xccdf_org.ssgproject.content_rule_mount_option_var_tmp_nodev'
-
-
-# ===============================================================================
-# BEGIN fix (198 / 305) for 'xccdf_org.ssgproject.content_rule_mount_option_var_tmp_noexec'
-# ===============================================================================
-# DESC: Adds 'noexec' to /var/tmp in /etc/fstab.
-
-if grep -q "$MNT_VARTMP_REGEXP" /etc/fstab; then
-    if ! grep "$MNT_VARTMP_REGEXP" /etc/fstab | grep -q "noexec"; then
-        sed -i "/$MNT_VARTMP_REGEXP/ s/\([[:space:]][^[:space:]]\+\)\([[:space:]]\+[0-9]\+[0-9]\+\)$/,\noexec\2/" /etc/fstab
-        sed -i 's/,,/,/g' /etc/fstab
-    fi
-else
-    echo "Warning: /var/tmp is not in fstab. Skipping noexec remediation." >&2
-fi
-
-# END fix for 'xccdf_org.ssgproject.content_rule_mount_option_var_tmp_noexec'
-
-# ===============================================================================
-# BEGIN fix (199 / 305) for 'xccdf_org.ssgproject.content_rule_mount_option_var_tmp_nosuid'
-# ===============================================================================
-# DESC: Adds 'nosuid' to /var/tmp in /etc/fstab.
-
-MNT_VARTMP_REGEXP="^[[:space:]]*[^#][^[:space:]]*[[:space:]]\+/var/tmp[[:space:]]"
-
-if grep -q "$MNT_VARTMP_REGEXP" /etc/fstab; then
-    if ! grep "$MNT_VARTMP_REGEXP" /etc/fstab | grep -q "nosuid"; then
-        sed -i "/$MNT_VARTMP_REGEXP/ s/\([[:space:]][^[:space:]]\+\)\([[:space:]]\+[0-9]\+[0-9]\+\)$/,\nosuid\2/" /etc/fstab
-        sed -i 's/,,/,/g' /etc/fstab
-    fi
-fi
-
-# END fix for 'xccdf_org.ssgproject.content_rule_mount_option_var_tmp_nosuid'
-
 
 # ===============================================================================
 # BEGIN fix (200 / 305) for 'xccdf_org.ssgproject.content_rule_coredump_disable_backtraces'
@@ -1310,166 +1168,6 @@ EOF
 
 # END fix for 'xccdf_org.ssgproject.content_rule_sysctl_kernel_randomize_va_space'
 
-
-# ===============================================================================
-# BEGIN fix (211 / 305) for 'xccdf_org.ssgproject.content_rule_service_cron_enabled'
-# ===============================================================================
-# DESC: Enables cron service. Removed 'systemctl start'.
-
-/usr/bin/systemctl unmask cron.service 2>/dev/null || true
-/usr/bin/systemctl enable cron.service 2>/dev/null || true
-
-# END fix for 'xccdf_org.ssgproject.content_rule_service_cron_enabled'
-
-
-# ===============================================================================
-# BEGIN fix (212 / 305) for 'xccdf_org.ssgproject.content_rule_file_groupowner_cron_d'
-# BEGIN fix (213 / 305) for 'xccdf_org.ssgproject.content_rule_file_groupowner_cron_daily'
-# BEGIN fix (214 / 305) for 'xccdf_org.ssgproject.content_rule_file_groupowner_cron_hourly'
-# BEGIN fix (215 / 305) for 'xccdf_org.ssgproject.content_rule_file_groupowner_cron_monthly'
-# BEGIN fix (216 / 305) for 'xccdf_org.ssgproject.content_rule_file_groupowner_cron_weekly'
-# BEGIN fix (217 / 305) for 'xccdf_org.ssgproject.content_rule_file_groupowner_crontab'
-# ===============================================================================
-# DESC: Sets group ownership of cron directories to root (0).
-
-[ -d /etc/cron.d ] && chgrp --no-dereference 0 /etc/cron.d
-[ -d /etc/cron.daily ] && chgrp --no-dereference 0 /etc/cron.daily
-[ -d /etc/cron.hourly ]  && chgrp --no-dereference 0 /etc/cron.hourly
-[ -d /etc/cron.monthly ] && chgrp --no-dereference 0 /etc/cron.monthly
-[ -d /etc/cron.weekly ]  && chgrp --no-dereference 0 /etc/cron.weekly
-[ -f /etc/crontab ]      && chgrp --no-dereference 0 /etc/crontab
-
-# END fix for 'xccdf_org.ssgproject.content_rule_file_groupowner_crontab'
-
-# ===============================================================================
-# BEGIN fix (218 / 305) for 'xccdf_org.ssgproject.content_rule_file_owner_cron_d'
-# BEGIN fix (219 / 305) for 'xccdf_org.ssgproject.content_rule_file_owner_cron_daily'
-# BEGIN fix (220 / 305) for 'xccdf_org.ssgproject.content_rule_file_owner_cron_hourly'
-# BEGIN fix (221 / 305) for 'xccdf_org.ssgproject.content_rule_file_owner_cron_monthly'
-# BEGIN fix (222 / 305) for 'xccdf_org.ssgproject.content_rule_file_owner_cron_weekly'
-# ===============================================================================
-# DESC: Sets ownership to root (0) for all cron directories.
-# NOTE: Using direct chown for KIWI resilience.
-
-for cron_dir in /etc/cron.d /etc/cron.daily /etc/cron.hourly /etc/cron.monthly /etc/cron.weekly; do
-    if [ -d "$cron_dir" ]; then
-        chown --no-dereference 0 "$cron_dir"
-    fi
-done
-
-# END fix for 'xccdf_org.ssgproject.content_rule_file_owner_cron_weekly'
-
-# ===============================================================================
-# BEGIN fix (223 / 305) for 'xccdf_org.ssgproject.content_rule_file_owner_crontab'
-# ===============================================================================
-# DESC: Sets owner of /etc/crontab to root.
-[ -f /etc/crontab ] && chown --no-dereference 0 /etc/crontab
-
-# ===============================================================================
-# BEGIN fix (224 / 305) to (228 / 305) - Permissions for cron directories
-# ===============================================================================
-# DESC: Sets permissions (700 equivalent) for all cron directories.
-# Mode: u-s,g-xwrs,o-xwrt (Safe for KIWI build)
-
-for cron_dir in /etc/cron.d /etc/cron.daily /etc/cron.hourly /etc/cron.monthly /etc/cron.weekly; do
-    if [ -d "$cron_dir" ]; then
-        chmod 0700 "$cron_dir"
-    fi
-done
-
-# ===============================================================================
-# BEGIN fix (229 / 305) for 'xccdf_org.ssgproject.content_rule_file_permissions_crontab'
-# ===============================================================================
-# DESC: Sets permissions for /etc/crontab (600 equivalent).
-[ -f /etc/crontab ] && chmod 0600 /etc/crontab
-
-# ===============================================================================
-# BEGIN fix (230 / 305) for 'xccdf_org.ssgproject.content_rule_file_at_deny_not_exist'
-# BEGIN fix (231 / 305) for 'xccdf_org.ssgproject.content_rule_file_cron_deny_not_exist'
-# ===============================================================================
-# DESC: Removes deny files to enforce whitelist-only access.
-rm -f /etc/at.deny /etc/cron.deny
-
-# ===============================================================================
-# BEGIN fix (232 / 305) for 'xccdf_org.ssgproject.content_rule_file_groupowner_at_allow'
-# ===============================================================================
-# DESC: Sets group owner for /etc/at.allow to root.
-[ -f /etc/at.allow ] && chgrp --no-dereference 0 /etc/at.allow
-
-# ===============================================================================
-# BEGIN fix (233 / 305) to (237 / 305) - Owner/Group/Perms for cron.allow & at.allow
-# ===============================================================================
-# DESC: Ensures only root can manage cron/at whitelists.
-# Permissions: 600 (u-xs,g-xws,o-xwrt equivalent)
-
-for allow_file in /etc/cron.allow /etc/at.allow; do
-    if [ -f "$allow_file" ]; then
-        chown 0 "$allow_file"
-        chgrp 0 "$allow_file"
-        chmod 0600 "$allow_file"
-    fi
-done
-
-# ===============================================================================
-# BEGIN fix (233 / 305) for 'xccdf_org.ssgproject.content_rule_file_groupowner_cron_allow'
-# ===============================================================================
-# DESC: Ensures /etc/cron.allow is owned by group 0 (root).
-if [ -f /etc/cron.allow ]; then
-    chgrp --no-dereference 0 /etc/cron.allow
-fi
-
-# ===============================================================================
-# BEGIN fix (234 / 305) for 'xccdf_org.ssgproject.content_rule_file_owner_at_allow'
-# ===============================================================================
-# DESC: Ensures /etc/at.allow is owned by user 0 (root).
-if [ -f /etc/at.allow ]; then
-    chown --no-dereference 0 /etc/at.allow
-fi
-
-# ===============================================================================
-# BEGIN fix (235 / 305) for 'xccdf_org.ssgproject.content_rule_file_owner_cron_allow'
-# ===============================================================================
-# DESC: Ensures /etc/cron.allow is owned by user 0 (root).
-if [ -f /etc/cron.allow ]; then
-    chown --no-dereference 0 /etc/cron.allow
-fi
-
-# ===============================================================================
-# BEGIN fix (236 / 305) for 'xccdf_org.ssgproject.content_rule_file_permissions_at_allow'
-# ===============================================================================
-# DESC: Removes suid/guid and world/group write/execute bits from /etc/at.allow.
-if [ -f /etc/at.allow ]; then
-    chmod u-xs,g-xws,o-xwrt /etc/at.allow
-fi
-
-# ===============================================================================
-# BEGIN fix (237 / 305) for 'xccdf_org.ssgproject.content_rule_file_permissions_cron_allow'
-# ===============================================================================
-# DESC: Removes suid/guid and world/group write/execute bits from /etc/cron.allow.
-if [ -f /etc/cron.allow ]; then
-    chmod u-xs,g-xws,o-xwrt /etc/cron.allow
-fi
-
-
-# ===============================================================================
-# BEGIN fix (257 / 305) for 'xccdf_org.ssgproject.content_rule_chronyd_configure_pool_and_server'
-# ===============================================================================
-# DESC: Configures NTP servers and pools in /etc/chrony.conf.
-if [ -f "/etc/chrony.conf" ]; then
-    for srv in 0.suse.pool.ntp.org 1.suse.pool.ntp.org 2.suse.pool.ntp.org 3.suse.pool.ntp.org; do
-        grep -q "^server $srv" /etc/chrony.conf || echo "server $srv" >> /etc/chrony.conf
-        grep -q "^pool $srv" /etc/chrony.conf || echo "pool $srv" >> /etc/chrony.conf
-    done
-fi
-
-# ===============================================================================
-# BEGIN fix (258 / 305) for 'xccdf_org.ssgproject.content_rule_chronyd_run_as_chrony_user'
-# ===============================================================================
-# DESC: Ensures chronyd runs under the 'chrony' user.
-if [ -f /etc/sysconfig/chronyd ]; then
-    sed -i '/^OPTIONS=/d' /etc/sysconfig/chronyd
-    echo 'OPTIONS="-u chrony"' >> /etc/sysconfig/chronyd
-fi
 
 # ===============================================================================
 # BEGIN fix (259 / 305) for 'xccdf_org.ssgproject.content_rule_service_timesyncd_root_distance_configured'
