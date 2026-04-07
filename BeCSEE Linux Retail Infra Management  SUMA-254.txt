@@ -2,14 +2,14 @@
 11:49 AM 2/20/2026
 
 BeCSEE Linux Retail Infra Management / SUMA-254
-Hardening of POS image
+Hardening of images
 
 
 From https://github.com/ComplianceAsCode/content/tree/master there is the latest datastream for scap (Nov 28 2025) => https://github.com/ComplianceAsCode/content/releases/tag/v0.1.79 => https://github.com/ComplianceAsCode/content/releases/download/v0.1.79/scap-security-guide-0.1.79.tar.gz
 
 11:55 AM 2/20/2026
 
-Proposed salt state to distribute the ssg-sle15-ds.xml with the included CIS Level 1 profile to POS devices
+Proposed salt state to distribute the ssg-sle15-ds.xml with the included CIS Level 1 profile to devices (check for newer versions that may be available 0.1.79 was the latest at the time of writing this guide):
 
 {% set version = "0.1.79" %}
 {% set archive = "scap-security-guide-{}.tar.gz".format(version) %}
@@ -47,7 +47,7 @@ install_sle15_ds:
 
 Manual run to test on specific pos devices without salt
 
-# install the utility packages on specific POS
+# install the utility packages on specific device
 
 zypper in openscap-utils openscap-content openscap libopenscap25 scap-security-guide
 
@@ -92,7 +92,6 @@ There is a need for balancing what rules to be fixed or not, manual process only
 
 
 
-
 7:35 AM 3/19/2026
 # scan against l1 cis compliant profile from the host
 export OSCAP_PROBE_MEMORY_USAGE_RATIO=0.05
@@ -100,8 +99,8 @@ cd /tmp
 oscap xccdf eval --profile xccdf_org.ssgproject.content_profile_cis_server_l1 --fetch-remote-resources --results oscap-scan-results-xccdf.xml /usr/share/xml/scap/ssg/content/ssg-sle15-ds.xml
 oscap xccdf generate report oscap-scan-results-xccdf.xml >> ssg-scan-report-xccdf.html
 
-oscap xccdf generate fix \
-  --fix-type bash \
-  --profile xccdf_org.ssgproject.content_profile_cis_server_l1 \
-  --output full-fix-server-l1.sh
-  oscap-scan-results-xccdf.xml \
+oscap xccdf generate fix --fix-type bash --profile xccdf_org.ssgproject.content_profile_cis_server_l1 --output full-fix-server-l1.sh oscap-scan-results-xccdf.xml 
+
+12:40 PM 3/31/2026
+
+9:01 AM 4/6/2026
